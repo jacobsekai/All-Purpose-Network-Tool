@@ -1,19 +1,3 @@
-﻿#!/usr/bin/env python3
-"""
-Enhanced Python Port Scanner & Networking Toolkit (Tkinter)
-- Cross‑platform ping & traceroute helpers
-- Threaded TCP port scanner with graceful stop
-- IP/range parsing including wildcard a.b.c.* convenience
-- Ping sweep host discovery
-- Basic banner grabbing (safe, read‑only)
-- Live log pane + desktop notifications (if plyer installed)
-- Results table with export to CSV
-- Network graph visualisation (networkx + matplotlib) showing discovered hosts
-- Telemetry log to telemetry.log
-
-Tested on Python 3.9+; optional libraries: matplotlib, networkx
-"""
-
 import os
 import sys
 import csv
@@ -39,7 +23,7 @@ except Exception:
     def send_notification(title, message):
         pass
 
-# Optional: network graph
+
 GRAPH_AVAILABLE = True
 try:
     import matplotlib
@@ -50,7 +34,7 @@ try:
 except Exception:
     GRAPH_AVAILABLE = False
 
-# Hide console window (Windows only)
+
 if os.name == 'nt':
     try:
         import ctypes
@@ -58,19 +42,18 @@ if os.name == 'nt':
     except Exception:
         pass
 
-# -------------------------- Telemetry ---------------------------
+
 
 def log_telemetry(event: str) -> None:
     try:
         with open("telemetry.log", "a", encoding="utf-8") as f:
             f.write(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {event}\n")
     except Exception:
-        # Never crash the app for telemetry failures
+       
         pass
 
 log_telemetry("Application started")
 
-# --------------------------- Helpers ----------------------------
 
 def is_windows() -> bool:
     return os.name == 'nt'
@@ -81,7 +64,6 @@ def safe_int(s: str, default: int) -> int:
     except Exception:
         return default
 
-# ----------------------- Network primitives ---------------------
 
 def check_port(ip_address: str, port_number: int, timeout: float = 1.0, grab_banner: bool = False):
     """Return tuple (ip, port, open:bool, banner:str|None, err:str|None)."""
@@ -95,7 +77,7 @@ def check_port(ip_address: str, port_number: int, timeout: float = 1.0, grab_ban
                 if grab_banner:
                     try:
                         s.settimeout(0.8)
-                        # Try to read a short banner without sending data
+                     
                         data = s.recv(128)
                         if data:
                             banner = data.decode(errors='replace').strip()
@@ -115,7 +97,7 @@ def run_ping_once(target: str, count: int = 1, timeout: int = 1000) -> bool:
         if is_windows():
             cmd = ["ping", "-n", str(count), "-w", str(timeout), target]
         else:
-            # On Unix, timeout is in seconds and -W is per-packet timeout
+            
             sec = max(1, int(timeout/1000))
             cmd = ["ping", "-c", str(count), "-W", str(sec), target]
         result = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -142,7 +124,6 @@ def run_traceroute(target: str) -> str:
         if is_windows():
             output = subprocess.check_output(["tracert", target], universal_newlines=True)
         else:
-            # Prefer 'traceroute', fallback to 'tracepath'
             try:
                 output = subprocess.check_output(["traceroute", target], universal_newlines=True)
             except Exception:
@@ -153,14 +134,13 @@ def run_traceroute(target: str) -> str:
     except Exception as e:
         return f"Traceroute error: {e}"
 
-# -------------------- Input parsing utilities -------------------
 
 def get_ip_list(ip_input: str):
     """Accepts CIDR (e.g. 192.168.1.0/24), wildcard a.b.c.*, or single IP/hostname."""
     ip_input = ip_input.strip()
     if not ip_input:
         return []
-    # Hostname resolution if not an IP/cidr/wildcard
+  
     if any(ch.isalpha() for ch in ip_input) and "*" not in ip_input and "/" not in ip_input:
         try:
             ip = socket.gethostbyname(ip_input)
@@ -177,12 +157,12 @@ def get_ip_list(ip_input: str):
             return []
     try:
         network = ipaddress.ip_network(ip_input, strict=False)
-        # Exclude network/broadcast for IPv4
+        
         if isinstance(network, ipaddress.IPv4Network):
             return [str(ip) for ip in network.hosts()]
         return [str(ip) for ip in network]
     except Exception:
-        # Fallback: single IP string
+        
         return [ip_input]
 
 
@@ -209,7 +189,7 @@ def get_port_list(port_input: str):
                 continue
     return sorted(ports)
 
-# -------------------------- GUI App -----------------------------
+
 
 class ScannerApp:
     def __init__(self, root: tk.Tk):
@@ -224,12 +204,12 @@ class ScannerApp:
 
         self._build_ui()
 
-    # -------------------- UI construction --------------------
+  
     def _build_ui(self):
         outer = ttk.Frame(self.root, padding=10)
         outer.pack(fill=tk.BOTH, expand=True)
 
-        # Inputs
+
         grid = ttk.Frame(outer)
         grid.pack(fill=tk.X)
 
@@ -253,7 +233,6 @@ class ScannerApp:
         ttk.Button(grid, text="Stop Scan", command=self.stop_scan).grid(column=1, row=3, padx=(110,0), pady=4, sticky=tk.W)
         ttk.Button(grid, text="Export CSV", command=self.export_csv).grid(column=1, row=3, padx=(200,0), pady=4, sticky=tk.W)
 
-        # Extra tools
         tools = ttk.LabelFrame(outer, text="Extra Networking Tools", padding=10)
         tools.pack(fill=tk.X, pady=(8,4))
 
@@ -265,7 +244,7 @@ class ScannerApp:
         ttk.Button(tools, text="Ping", command=self.run_ping_gui).grid(column=0, row=1, pady=4, sticky=tk.W)
         ttk.Button(tools, text="Traceroute", command=self.run_traceroute_gui).grid(column=1, row=1, pady=4, sticky=tk.W)
 
-        # Results table
+       
         table_frame = ttk.LabelFrame(outer, text="Results", padding=6)
         table_frame.pack(fill=tk.BOTH, expand=True)
 
@@ -276,11 +255,11 @@ class ScannerApp:
             self.tree.column(c, width=w, anchor=tk.W)
         self.tree.pack(fill=tk.BOTH, expand=True)
 
-        # Log
+      
         self.log_text = scrolledtext.ScrolledText(outer, width=120, height=12)
         self.log_text.pack(fill=tk.BOTH, expand=False, pady=(6,6))
 
-        # Graph
+       
         graph_frame = ttk.LabelFrame(outer, text="Network Graph", padding=6)
         graph_frame.pack(fill=tk.BOTH, expand=True)
         if GRAPH_AVAILABLE:
@@ -292,7 +271,7 @@ class ScannerApp:
         else:
             ttk.Label(graph_frame, text="Graph packages not installed. Install 'matplotlib' and 'networkx' to enable.").pack(anchor=tk.W)
 
-    # ------------------------- Actions -------------------------
+   
     def append_log(self, text: str):
         self.log_text.insert(tk.END, text + "\n")
         self.log_text.see(tk.END)
@@ -353,7 +332,7 @@ class ScannerApp:
             messagebox.showerror("Invalid input", "Please provide valid target(s) and port(s).")
             return
 
-        # Clear previous
+       
         self.tree.delete(*self.tree.get_children())
         self.result_rows.clear()
         if GRAPH_AVAILABLE:
@@ -365,13 +344,13 @@ class ScannerApp:
         self.append_log(f"[!] Scanning {len(ip_list)} hosts and {len(port_list)} ports\n")
         log_telemetry(f"Scan started on {len(ip_list)} IPs and {len(port_list)} ports")
 
-        # Kick worker thread
+        
         self.scan_thread = threading.Thread(target=self._scan_worker, args=(ip_list, port_list, threads), daemon=True)
         self.scan_thread.start()
 
-    # --------------------- Core scan logic ---------------------
+    
     def _scan_worker(self, ip_list, port_list, threads):
-        # Host discovery first (ping sweep)
+        
         live_hosts = []
         self.append_log("[?] Performing ping sweep for host discovery…")
         for ip in ip_list:
@@ -382,9 +361,9 @@ class ScannerApp:
                 self.append_log(f"[+] Host up: {ip}")
         if not live_hosts:
             self.append_log("[-] No live hosts detected (continuing to scan targets anyway).")
-            live_hosts = ip_list[:]  # still attempt
+            live_hosts = ip_list[:]  
 
-        # Prepare work queue
+       
         tasks = queue.Queue()
         for ip in live_hosts:
             for port in port_list:
@@ -421,12 +400,12 @@ class ScannerApp:
         for t in workers:
             t.join()
 
-        # Summaries
+      
         if open_count == 0:
             self.append_log("[-] No open ports found.")
         else:
             self.append_log(f"[?] Found {open_count} open ports.")
-            # Beep on Windows only
+           
             if is_windows():
                 try:
                     import winsound
@@ -438,14 +417,14 @@ class ScannerApp:
         send_notification("Port Scan Complete", f"{open_count} open ports found.")
         log_telemetry("Scan completed")
 
-        # Update graph after scan
+       
         if GRAPH_AVAILABLE:
             try:
                 self._update_graph(live_hosts)
             except Exception as e:
                 self.append_log(f"[!] Graph update failed: {e}")
 
-    # ---------------------- Graph rendering --------------------
+    
     def _update_graph(self, live_hosts):
         """Render a simple network graph: a star from \"LocalNet\" to each live host.
         Node size encodes number of open services.
@@ -454,7 +433,7 @@ class ScannerApp:
         center = "LocalNet"
         self.G.add_node(center)
 
-        # Count open ports per host
+        
         counts = {}
         for row in self.result_rows:
             counts[row["ip"]] = counts.get(row["ip"], 0) + 1
@@ -478,11 +457,10 @@ class ScannerApp:
         self.canvas.draw()
 
 
-# --------------------------- Main -------------------------------
 
 def main():
     root = tk.Tk()
-    # Tk 8.6+ themed
+   
     try:
         root.call('tk', 'scaling', 1.1)
     except Exception:
